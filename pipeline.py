@@ -28,3 +28,43 @@ from pathlib import Path
 Path("refined").mkdir(exist_ok=True)
 dados.to_csv("refined/obras.csv", index=False, encoding="utf-8-sig")
 print("\nTabela refined/obras.csv criada com sucesso!")
+colunas_gerais = [
+    "id_registro",
+    "Contrato",
+    "Status",
+    "Prazo Inicial",
+    "Prazo Vigente",
+]
+colunas_financeiras = [
+    "id_registro",
+    "Valor Contrato Inicial (R$)",
+    "Valor Contrato Vigente (R$)",
+    "% Execução Financeira",
+]
+obras_gerais = dados[colunas_gerais].copy()
+obras_financeiras = dados[colunas_financeiras].copy()
+obras_gerais.to_csv("refined/obras_gerais.csv", index=False)
+obras_financeiras.to_csv("refined/obras_financeiras.csv", index=False)
+print("\nTabelas gerais e financeiras criadas!")
+import duckdb
+conexao = duckdb.connect("obras.duckdb")
+conexao.execute("""
+    CREATE OR REPLACE TABLE obras_gerais AS
+    SELECT * FROM read_csv_auto('refined/obras_gerais.csv')
+""")
+conexao.execute("""
+    CREATE OR REPLACE TABLE obras_financeiras AS
+    SELECT * FROM read_csv_auto('refined/obras_financeiras.csv')
+""")
+print("Tabelas carregadas no DuckDB com sucesso!")
+from pathlib import Path
+consulta = Path("marts/indicador_status.sql").read_text(encoding="utf-8")
+resultado = conexao.execute(consulta).df()
+print("\nQuantidade de obras por status:")
+print(resultado)
+resultado.to_csv(
+    "marts/indicador_status.csv",
+    index=False,
+    encoding="utf-8-sig"
+)
+print("Indicador salvo com sucesso!")
